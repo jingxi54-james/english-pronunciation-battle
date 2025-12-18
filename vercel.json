@@ -1,0 +1,11 @@
+{
+  "buildCommand": "npm install",
+  "outputDirectory": ".",
+  "public": true,
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

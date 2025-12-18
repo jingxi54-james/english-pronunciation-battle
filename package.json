@@ -1,0 +1,14 @@
+{
+  "name": "english-pronunciation-battle",
+  "version": "1.0.0",
+  "description": "英语发音大作战 - English Pronunciation Battle Game",
+  "private": true,
+  "keywords": [
+    "game",
+    "english",
+    "pronunciation",
+    "boss-battle"
+  ],
+  "author": "",
+  "license": "ISC"
+}

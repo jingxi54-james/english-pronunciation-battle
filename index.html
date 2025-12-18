@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英语发音大作战</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- 登录页面 -->
+    <div class="login-page" id="loginPage">
+        <div class="login-container">
+            <h1>🎮 英语发音大作战</h1>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="userName">姓名:</label>
+                    <input type="text" id="userName" placeholder="请输入你的姓名" required>
+                </div>
+                <div class="form-group">
+                    <label for="userGrade">年级:</label>
+                    <select id="userGrade" required>
+                        <option value="">-- 请选择年级 --</option>
+                        <option value="1">小学一年级</option>
+                        <option value="2">小学二年级</option>
+                        <option value="3">小学三年级</option>
+                        <option value="4">小学四年级</option>
+                        <option value="5">小学五年级</option>
+                        <option value="6">小学六年级</option>
+                        <option value="7">初中一年级</option>
+                        <option value="8">初中二年级</option>
+                        <option value="9">初中三年级</option>
+                        <option value="10">高中一年级</option>
+                        <option value="11">高中二年级</option>
+                        <option value="12">高中三年级</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-login">开始游戏</button>
+            </form>
+            <button class="btn-view-scores" id="viewScoresBtn">📈 查看成绩数据库</button>
+        </div>
+    </div>
+
+    <div class="container" id="gameContainer" style="display: none;">
+        <!-- 游戏标题 -->
+        <div class="header">
+            <h1>🎮 英语发音大作战</h1>
+            <div class="level-info">
+                <span>第 <span id="level">1</span> 关</span>
+                <span id="score">得分: 0</span>
+                <span id="attackCount">攻击次数: 0/20</span>
+            </div>
+        </div>
+
+        <!-- BOSS区域 -->
+        <div class="boss-area">
+            <div class="boss-container">
+                <div class="boss-character" id="bossCharacter">👹</div>
+                <div class="boss-info">
+                    <div class="boss-name" id="bossName">BOSS</div>
+                    <div class="health-bar">
+                        <div class="health-fill" id="healthFill"></div>
+                    </div>
+                    <div class="health-text">
+                        <span id="bossHealth">100</span> / <span id="bossMaxHealth">100</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 游戏区域 - 发音训练模式 -->
+        <div class="game-area" id="pronunciationMode">
+            <!-- 单词卡片 -->
+            <div class="word-card">
+                <div class="word-display" id="wordDisplay">Ready?</div>
+                <div class="word-phonetic" id="wordPhonetic"></div>
+                <button class="btn-play" id="playAudio" title="播放发音">🔊 播放发音</button>
+            </div>
+
+            <!-- 录音控制 -->
+            <div class="recording-controls">
+                <button class="btn-record" id="recordBtn">🎤 开始录音</button>
+                <div class="recording-status" id="recordingStatus"></div>
+            </div>
+
+            <!-- 准确率显示 -->
+            <div class="accuracy-display" id="accuracyDisplay" style="display: none;">
+                <div class="accuracy-value" id="accuracyValue">0%</div>
+                <div class="accuracy-feedback" id="accuracyFeedback"></div>
+                <div class="damage-info" id="damageInfo"></div>
+                <div class="accuracy-buttons">
+                    <button class="btn-attack" id="attackBtn">⚔️ 攻击</button>
+                    <button class="btn-retry" id="retryBtn">重新录制</button>
+                </div>
+                <div class="next-buttons" id="nextButtons" style="display: none;">
+                    <button class="btn-next" id="nextBtn">下一题</button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 游戏结束弹窗 -->
+        <div class="modal" id="gameOverModal" style="display: none;">
+            <div class="modal-content">
+                <h2 id="gameOverTitle">游戏结束</h2>
+                <p id="gameOverMessage"></p>
+                <button class="btn-primary" id="nextLevelBtn">下一关</button>
+                <button class="btn-secondary" id="restartBtn">重新开始</button>
+            </div>
+        </div>
+
+        <!-- 游戏说明 -->
+        <div class="instructions">
+            <p>📝 规则: 准确率100%则对BOSS造成20点伤害。准确率越高对BOSS的伤害就越高。击败BOSS后进入下一关。小英雄们，加油！</p>
+        </div>
+
+        <!-- 排行榜入口 -->
+        <div class="leaderboard-entrance">
+            <button class="btn-leaderboard" id="leaderboardBtn">📊 查看排行榜</button>
+            <button class="btn-save-logout" id="saveLogoutBtn">💾 保存并退出</button>
+            <button class="btn-logout" id="logoutBtn">🚪 退出登录</button>
+        </div>
+    </div>
+
+    <!-- 排行榜页面 -->
+    <div class="leaderboard-page" id="leaderboardPage" style="display: none;">
+        <div class="leaderboard-container">
+            <div class="leaderboard-header">
+                <h1>🏆 排行榜</h1>
+                <button class="btn-back" id="backBtn">← 返回游戏</button>
+            </div>
+            
+            <div class="leaderboard-filters">
+                <button class="filter-btn active" data-filter="all">全部</button>
+                <button class="filter-btn" data-filter="grade">按年级</button>
+            </div>
+
+            <div id="gradeFilter" style="display: none;" class="grade-filter">
+                <select id="filterGrade">
+                    <option value="">-- 选择年级 --</option>
+                    <option value="1">小学一年级</option>
+                    <option value="2">小学二年级</option>
+                    <option value="3">小学三年级</option>
+                    <option value="4">小学四年级</option>
+                    <option value="5">小学五年级</option>
+                    <option value="6">小学六年级</option>
+                    <option value="7">初中一年级</option>
+                    <option value="8">初中二年级</option>
+                    <option value="9">初中三年级</option>
+                    <option value="10">高中一年级</option>
+                    <option value="11">高中二年级</option>
+                    <option value="12">高中三年级</option>
+                </select>
+            </div>
+
+            <div class="leaderboard-list" id="leaderboardList">
+                <p class="empty-message">暂无排行榜数据</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 成绩数据库页面 -->
+    <div class="scores-database-page" id="scoresDatabasePage" style="display: none;">
+        <div class="scores-database-container">
+            <div class="scores-database-header">
+                <h1>📈 成绩数据库</h1>
+                <button class="btn-back" id="backToLoginBtn">← 返回登录</button>
+            </div>
+            
+            <div class="scores-filters">
+                <button class="scores-filter-btn active" data-filter="all">全部成绩</button>
+                <button class="scores-filter-btn" data-filter="grade">按年级</button>
+                <button class="scores-filter-btn" data-filter="name">按姓名</button>
+            </div>
+
+            <div id="scoresGradeFilter" style="display: none;" class="scores-grade-filter">
+                <select id="scoresFilterGrade">
+                    <option value="">-- 选择年级 --</option>
+                    <option value="1">小学一年级</option>
+                    <option value="2">小学二年级</option>
+                    <option value="3">小学三年级</option>
+                    <option value="4">小学四年级</option>
+                    <option value="5">小学五年级</option>
+                    <option value="6">小学六年级</option>
+                    <option value="7">初中一年级</option>
+                    <option value="8">初中二年级</option>
+                    <option value="9">初中三年级</option>
+                    <option value="10">高中一年级</option>
+                    <option value="11">高中二年级</option>
+                    <option value="12">高中三年级</option>
+                </select>
+            </div>
+
+            <div id="scoresNameFilter" style="display: none;" class="scores-name-filter">
+                <input type="text" id="scoresFilterName" placeholder="输入姓名搜索...">
+            </div>
+
+            <div class="scores-list" id="scoresList">
+                <p class="empty-message">暂无成绩数据</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="vocabulary.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>

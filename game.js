@@ -57,7 +57,8 @@ let gameState = {
     maxAttacks: 20, // 每轮最多攻击次数
     gameStartTime: null, // 游戏开始时间
     timeTaken: 0, // 游戏用时（秒）
-    lastSavedId: null // 最后保存的成绩ID
+    lastSavedId: null, // 最后保存的成绩ID
+    isMockMode: false // 是否使用模拟录音模式
 };
 
 // 排行榜数据（本地存储）
@@ -299,11 +300,18 @@ function initializeDOM() {
                 gameState.audioStream.getTracks().forEach(track => track.stop());
             }
             
+            // 如果是模拟模式，直接重新设置
+            if (gameState.isMockMode) {
+                setupMockRecording();
+                return;
+            }
+            
             navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
                 setupRecording(stream);
             }).catch(error => {
                 console.error('麦克风访问错误:', error);
-                alert('无法访问麦克风，请检查权限设置');
+                console.warn('⚠️ 麦克风访问失败，切换到模拟录音模式');
+                setupMockRecording();
             });
         });
     }
@@ -369,6 +377,17 @@ function startGame() {
     initGame();
 }
 
+// 检测是否在WeChat浏览器中
+function isWeChatBrowser() {
+    const ua = navigator.userAgent.toLowerCase();
+    return /micromessenger/.test(ua);
+}
+
+// 检测浏览器是否支持getUserMedia
+function isMicrophoneSupported() {
+    return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+}
+
 // 初始化游戏
 async function initGame() {
     try {
@@ -381,13 +400,34 @@ async function initGame() {
         // 加载排行榜数据
         await loadLeaderboardFromServer();
         
+        // 检测WeChat浏览器
+        if (isWeChatBrowser()) {
+            console.warn('⚠️ 检测到WeChat浏览器，使用模拟录音模式');
+            setupMockRecording();
+            initNewBoss();
+            loadWord();
+            return;
+        }
+        
+        // 检测麦克风支持
+        if (!isMicrophoneSupported()) {
+            console.warn('⚠️ 浏览器不支持麦克风访问，使用模拟录音模式');
+            setupMockRecording();
+            initNewBoss();
+            loadWord();
+            return;
+        }
+        
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         setupRecording(stream);
         initNewBoss();
         loadWord();
     } catch (error) {
-        alert('需要麦克风权限才能进行游戏。请允许访问麦克风。');
         console.error('麦克风访问错误:', error);
+        console.warn('⚠️ 麦克风访问失败，使用模拟录音模式');
+        setupMockRecording();
+        initNewBoss();
+        loadWord();
     }
 }
 
@@ -406,6 +446,28 @@ function setupRecording(stream) {
         const audioBlob = new Blob(gameState.audioChunks, { type: 'audio/wav' });
         analyzeAudio(audioBlob);
         gameState.audioChunks = [];
+    };
+}
+
+// 设置模拟录音（用于WeChat或不支持麦克风的环境）
+function setupMockRecording() {
+    gameState.isMockMode = true;
+    console.log('✅ 模拟录音模式已启用');
+    
+    // 创建虚拟的mediaRecorder对象
+    gameState.mediaRecorder = {
+        start: function() {
+            console.log('模拟录音开始');
+        },
+        stop: function() {
+            console.log('模拟录音停止');
+            // 模拟分析音频
+            setTimeout(() => {
+                const mockAccuracy = 70 + Math.random() * 30; // 70-100%的准确率
+                showAccuracyResult(Math.round(mockAccuracy));
+            }, 500);
+        },
+        state: 'inactive'
     };
 }
 
@@ -879,7 +941,12 @@ function startRecording() {
     gameState.mediaRecorder.start();
     elements.recordBtn.textContent = '⏹ 停止录音';
     elements.recordBtn.classList.add('recording');
-    elements.recordingStatus.textContent = '正在录音...';
+    
+    if (gameState.isMockMode) {
+        elements.recordingStatus.textContent = '模拟录音中...';
+    } else {
+        elements.recordingStatus.textContent = '正在录音...';
+    }
 }
 
 // 停止录音

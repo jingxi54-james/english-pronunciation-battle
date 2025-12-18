@@ -805,7 +805,6 @@ function playVictorySoundFallback() {
         console.warn('⚠️ 振动 API 不可用');
     }
 }
-}
 
 // 伤害动画
 function playDamageAnimation() {

@@ -191,10 +191,27 @@ function initializeDOM() {
     // 查看成绩数据库
     if (viewScoresBtn) {
         viewScoresBtn.addEventListener('click', async () => {
-            elements.loginPage.style.display = 'none';
-            scoresDatabasePage.style.display = 'flex';
-            await loadLeaderboardFromServer();
-            renderScoresDatabase('all');
+            try {
+                console.log('点击查看成绩数据库按钮');
+                elements.loginPage.style.display = 'none';
+                scoresDatabasePage.style.display = 'flex';
+                
+                // 添加超时控制
+                const loadPromise = loadLeaderboardFromServer();
+                const timeoutPromise = new Promise((resolve) => {
+                    setTimeout(() => {
+                        console.warn('⚠️ 加载超时，使用本地数据');
+                        resolve();
+                    }, 5000);
+                });
+                
+                await Promise.race([loadPromise, timeoutPromise]);
+                renderScoresDatabase('all');
+                console.log('✅ 成绩数据库已加载');
+            } catch (error) {
+                console.error('❌ 加载成绩数据库失败:', error);
+                renderScoresDatabase('all');
+            }
         });
     }
 
@@ -1077,57 +1094,77 @@ async function showLeaderboard() {
 
 // 从 Supabase 加载排行榜数据
 async function loadLeaderboardFromServer() {
-    // 确保 Supabase 已初始化
-    if (!supabaseClient) {
-        console.log('Supabase 未初始化，尝试初始化...');
-        initSupabaseClient();
-    }
-    
-    if (!supabaseClient) {
-        console.warn('⚠️ Supabase 无法初始化，使用本地存储');
-        const localData = localStorage.getItem('leaderboard');
-        if (localData) {
-            leaderboard = JSON.parse(localData);
-            console.log('使用本地数据，共', leaderboard.length, '条记录');
-        }
-        return;
-    }
-
     try {
-        console.log('正在从 Supabase 加载排行榜...');
+        // 确保 Supabase 已初始化
+        if (!supabaseClient) {
+            console.log('Supabase 未初始化，尝试初始化...');
+            initSupabaseClient();
+        }
         
-        const { data, error } = await supabaseClient
-            .from('leaderboard')
-            .select('*')
-            .order('boss_kills', { ascending: false })
-            .order('score', { ascending: false })
-            .order('time_taken', { ascending: true })
-            .limit(100);
-
-        if (error) {
-            console.error('❌ Supabase 查询失败:', error);
-            console.error('错误详情:', error.message, error.details);
-            // 使用本地数据
-            const localData = localStorage.getItem('leaderboard');
-            if (localData) {
-                leaderboard = JSON.parse(localData);
-                console.log('使用本地数据，共', leaderboard.length, '条记录');
-            }
+        if (!supabaseClient) {
+            console.warn('⚠️ Supabase 无法初始化，使用本地存储');
+            loadLeaderboardFromLocal();
             return;
         }
 
-        console.log('✅ 排行榜已从 Supabase 加载，共', data.length, '条记录');
-        leaderboard = data;
-        localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+        console.log('正在从 Supabase 加载排行榜...');
+        
+        // 添加超时控制
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        try {
+            const { data, error } = await supabaseClient
+                .from('leaderboard')
+                .select('*')
+                .order('boss_kills', { ascending: false })
+                .order('score', { ascending: false })
+                .order('time_taken', { ascending: true })
+                .limit(100);
+
+            clearTimeout(timeoutId);
+
+            if (error) {
+                console.error('❌ Supabase 查询失败:', error);
+                console.error('错误详情:', error.message, error.details);
+                loadLeaderboardFromLocal();
+                return;
+            }
+
+            if (data && data.length > 0) {
+                console.log('✅ 排行榜已从 Supabase 加载，共', data.length, '条记录');
+                leaderboard = data;
+                localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+            } else {
+                console.log('⚠️ Supabase 返回空数据，使用本地存储');
+                loadLeaderboardFromLocal();
+            }
+        } catch (timeoutError) {
+            clearTimeout(timeoutId);
+            console.warn('⚠️ Supabase 加载超时，使用本地存储');
+            loadLeaderboardFromLocal();
+        }
 
     } catch (error) {
         console.error('❌ 加载排行榜错误:', error);
-        // 使用本地数据
+        loadLeaderboardFromLocal();
+    }
+}
+
+// 从本地存储加载排行榜
+function loadLeaderboardFromLocal() {
+    try {
         const localData = localStorage.getItem('leaderboard');
         if (localData) {
             leaderboard = JSON.parse(localData);
-            console.log('使用本地数据，共', leaderboard.length, '条记录');
+            console.log('✅ 使用本地数据，共', leaderboard.length, '条记录');
+        } else {
+            console.log('⚠️ 本地也没有数据');
+            leaderboard = [];
         }
+    } catch (e) {
+        console.error('❌ 本地数据解析失败:', e);
+        leaderboard = [];
     }
 }
 

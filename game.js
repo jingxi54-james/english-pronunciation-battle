@@ -846,8 +846,10 @@ elements.backBtn.addEventListener('click', () => {
 
 // 格式化时间
 function formatTime(seconds) {
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    // 确保 seconds 是有效的数字
+    const time = parseInt(seconds) || 0;
+    const minutes = Math.floor(time / 60);
+    const secs = time % 60;
     return `${minutes}分${secs}秒`;
 }
 
@@ -871,17 +873,20 @@ function renderLeaderboard(filter = 'all') {
         '10': '高中一年级', '11': '高中二年级', '12': '高中三年级'
     };
     
-    elements.leaderboardList.innerHTML = data.map((item, index) => `
+    elements.leaderboardList.innerHTML = data.map((item, index) => {
+        const timeTaken = parseInt(item.time_taken) || 0;
+        return `
         <div class="leaderboard-item">
             <div class="rank rank-${index + 1}">${index + 1}</div>
             <div class="player-info">
                 <div class="player-name">${item.name}</div>
                 <div class="player-grade">${gradeNames[item.grade]} · ${item.date}</div>
-                <div class="player-stats">击杀BOSS: ${item.bossKills || 0} 个 | 得分: ${item.score} | 用时: ${formatTime(item.timeTaken || 0)}</div>
+                <div class="player-stats">击杀BOSS: ${item.boss_kills || 0} 个 | 得分: ${item.score} | 用时: ${formatTime(timeTaken)}</div>
             </div>
-            <div class="player-score">🏆 ${item.bossKills || 0}</div>
+            <div class="player-score">🏆 ${item.boss_kills || 0}</div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 // 排行榜筛选
@@ -961,17 +966,20 @@ function renderScoresDatabase(filter = 'all') {
         '10': '高中一年级', '11': '高中二年级', '12': '高中三年级'
     };
     
-    scoresList.innerHTML = data.map((item, index) => `
+    scoresList.innerHTML = data.map((item, index) => {
+        const timeTaken = parseInt(item.time_taken) || 0;
+        return `
         <div class="score-item">
             <div class="score-rank rank-${index + 1}">${index + 1}</div>
             <div class="score-details">
                 <div class="score-name">${item.name}</div>
                 <div class="score-info">${gradeNames[item.grade]} · ${item.date}</div>
-                <div class="score-info">击杀BOSS: ${item.bossKills || 0} 个 | 得分: ${item.score} | 用时: ${formatTime(item.timeTaken || 0)}</div>
+                <div class="score-info">击杀BOSS: ${item.boss_kills || 0} 个 | 得分: ${item.score} | 用时: ${formatTime(timeTaken)}</div>
             </div>
             <div class="score-value">${item.score}</div>
         </div>
-    `).join('');
+    `;
+    }).join('');
 }
 
 // 成绩数据库筛选

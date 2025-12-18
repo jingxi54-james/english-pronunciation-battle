@@ -502,17 +502,21 @@ function loadWord() {
     // 从当前轮次未使用过的词语中随机选择
     const availableWords = gameState.currentWords.filter(word => !gameState.usedWordsInRound.includes(word.word));
     
-    // 如果当前轮次所有词语都用过了，重置已使用列表
+    // 如果没有可用词语了，说明本轮所有词都用过了
     if (availableWords.length === 0) {
-        gameState.usedWordsInRound = [];
+        console.warn('⚠️ 本轮所有词语已用完，无法继续出题');
+        alert('本轮所有词语已用完！');
+        return;
     }
     
     // 从可用词语中随机选择
-    const randomIndex = Math.floor(Math.random() * (availableWords.length > 0 ? availableWords.length : gameState.currentWords.length));
-    gameState.currentWord = availableWords.length > 0 ? availableWords[randomIndex] : gameState.currentWords[randomIndex];
+    const randomIndex = Math.floor(Math.random() * availableWords.length);
+    gameState.currentWord = availableWords[randomIndex];
     
     // 标记为当前轮次已使用
     gameState.usedWordsInRound.push(gameState.currentWord.word);
+    
+    console.log(`📝 加载单词: ${gameState.currentWord.word} (本轮已用: ${gameState.usedWordsInRound.length}/${gameState.currentWords.length})`);
     
     // 只使用发音训练模式
     gameState.gameMode = 'pronunciation';

@@ -365,6 +365,12 @@ function startGame() {
     elements.loginPage.style.display = 'none';
     elements.gameContainer.style.display = 'block';
     
+    // 初始化 AudioContext（获得用户交互权限）
+    const audioContext = getAudioContext();
+    if (audioContext && audioContext.state === 'suspended') {
+        audioContext.resume().catch(e => console.warn('AudioContext 恢复失败:', e));
+    }
+    
     // 根据年级获取词汇
     gameState.currentWords = wordsByGrade[gameState.userGrade];
     gameState.currentLevel = 1;
@@ -597,9 +603,31 @@ function damageTowardsBoss(damagePercent = 0.2) {
 }
 
 // 播放BOSS被攻击的音效
+// 全局 AudioContext
+let audioContextInstance = null;
+
+function getAudioContext() {
+    if (!audioContextInstance) {
+        try {
+            audioContextInstance = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) {
+            console.warn('⚠️ AudioContext 不可用:', e);
+            return null;
+        }
+    }
+    return audioContextInstance;
+}
+
 function playAttackSound() {
     try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const audioContext = getAudioContext();
+        if (!audioContext) return;
+        
+        // 恢复 AudioContext 如果被暂停
+        if (audioContext.state === 'suspended') {
+            audioContext.resume().catch(e => console.warn('AudioContext 恢复失败:', e));
+        }
+        
         const now = audioContext.currentTime;
         
         // 创建多个振荡器和增益节点以产生更激烈的音效
@@ -636,15 +664,24 @@ function playAttackSound() {
         osc1.stop(now + 0.15);
         osc2.start(now);
         osc2.stop(now + 0.1);
+        
+        console.log('✅ 攻击音效已播放');
     } catch (e) {
-        console.log('音效播放失败:', e);
+        console.warn('⚠️ 音效播放失败:', e);
     }
 }
 
 // 播放过关音效
 function playVictorySound() {
     try {
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const audioContext = getAudioContext();
+        if (!audioContext) return;
+        
+        // 恢复 AudioContext 如果被暂停
+        if (audioContext.state === 'suspended') {
+            audioContext.resume().catch(e => console.warn('AudioContext 恢复失败:', e));
+        }
+        
         const now = audioContext.currentTime;
         
         // 创建胜利音效：上升的音调
@@ -676,8 +713,10 @@ function playVictorySound() {
         
         osc.start(now);
         osc.stop(now + 0.6);
+        
+        console.log('✅ 过关音效已播放');
     } catch (e) {
-        console.log('过关音效播放失败:', e);
+        console.warn('⚠️ 过关音效播放失败:', e);
     }
 }
 

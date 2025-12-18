@@ -85,48 +85,272 @@ function getBossConfig(level) {
 }
 
 // DOM元素
-const elements = {
-    loginPage: document.getElementById('loginPage'),
-    gameContainer: document.getElementById('gameContainer'),
-    leaderboardPage: document.getElementById('leaderboardPage'),
-    loginForm: document.getElementById('loginForm'),
-    userName: document.getElementById('userName'),
-    userGrade: document.getElementById('userGrade'),
-    wordDisplay: document.getElementById('wordDisplay'),
-    wordPhonetic: document.getElementById('wordPhonetic'),
-    playAudioBtn: document.getElementById('playAudio'),
-    recordBtn: document.getElementById('recordBtn'),
-    recordingStatus: document.getElementById('recordingStatus'),
-    accuracyDisplay: document.getElementById('accuracyDisplay'),
-    accuracyValue: document.getElementById('accuracyValue'),
-    accuracyFeedback: document.getElementById('accuracyFeedback'),
-    bossHealth: document.getElementById('bossHealth'),
-    healthFill: document.getElementById('healthFill'),
-    level: document.getElementById('level'),
-    score: document.getElementById('score'),
-    gameOverModal: document.getElementById('gameOverModal'),
-    gameOverTitle: document.getElementById('gameOverTitle'),
-    gameOverMessage: document.getElementById('gameOverMessage'),
-    nextLevelBtn: document.getElementById('nextLevelBtn'),
-    restartBtn: document.getElementById('restartBtn'),
-    leaderboardBtn: document.getElementById('leaderboardBtn'),
-    logoutBtn: document.getElementById('logoutBtn'),
-    backBtn: document.getElementById('backBtn'),
-    leaderboardList: document.getElementById('leaderboardList'),
-    filterGrade: document.getElementById('filterGrade'),
-    gradeFilter: document.getElementById('gradeFilter')
-};
+let elements = {};
 
-// 登录处理
-elements.loginForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    gameState.userName = elements.userName.value.trim();
-    gameState.userGrade = elements.userGrade.value;
-    
-    if (gameState.userName && gameState.userGrade) {
-        startGame();
+// 初始化DOM元素和事件监听器
+function initializeDOM() {
+    elements = {
+        loginPage: document.getElementById('loginPage'),
+        gameContainer: document.getElementById('gameContainer'),
+        leaderboardPage: document.getElementById('leaderboardPage'),
+        loginForm: document.getElementById('loginForm'),
+        userName: document.getElementById('userName'),
+        userGrade: document.getElementById('userGrade'),
+        wordDisplay: document.getElementById('wordDisplay'),
+        wordPhonetic: document.getElementById('wordPhonetic'),
+        playAudioBtn: document.getElementById('playAudio'),
+        recordBtn: document.getElementById('recordBtn'),
+        recordingStatus: document.getElementById('recordingStatus'),
+        accuracyDisplay: document.getElementById('accuracyDisplay'),
+        accuracyValue: document.getElementById('accuracyValue'),
+        accuracyFeedback: document.getElementById('accuracyFeedback'),
+        bossHealth: document.getElementById('bossHealth'),
+        healthFill: document.getElementById('healthFill'),
+        level: document.getElementById('level'),
+        score: document.getElementById('score'),
+        gameOverModal: document.getElementById('gameOverModal'),
+        gameOverTitle: document.getElementById('gameOverTitle'),
+        gameOverMessage: document.getElementById('gameOverMessage'),
+        nextLevelBtn: document.getElementById('nextLevelBtn'),
+        restartBtn: document.getElementById('restartBtn'),
+        leaderboardBtn: document.getElementById('leaderboardBtn'),
+        logoutBtn: document.getElementById('logoutBtn'),
+        backBtn: document.getElementById('backBtn'),
+        leaderboardList: document.getElementById('leaderboardList'),
+        filterGrade: document.getElementById('filterGrade'),
+        gradeFilter: document.getElementById('gradeFilter')
+    };
+
+    // 登录处理
+    elements.loginForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        gameState.userName = elements.userName.value.trim();
+        gameState.userGrade = elements.userGrade.value;
+        
+        if (gameState.userName && gameState.userGrade) {
+            startGame();
+        }
+    });
+
+    // 其他事件监听器
+    elements.nextLevelBtn.addEventListener('click', nextLevel);
+    elements.restartBtn.addEventListener('click', resetGame);
+    elements.playAudioBtn.addEventListener('click', playWordAudio);
+    elements.recordBtn.addEventListener('click', () => {
+        if (!gameState.isRecording) {
+            startRecording();
+        } else {
+            stopRecording();
+        }
+    });
+    elements.leaderboardBtn.addEventListener('click', showLeaderboard);
+    elements.backBtn.addEventListener('click', () => {
+        elements.leaderboardPage.style.display = 'none';
+        elements.gameContainer.style.display = 'block';
+    });
+    elements.logoutBtn.addEventListener('click', () => {
+        elements.gameContainer.style.display = 'none';
+        elements.loginPage.style.display = 'flex';
+        elements.loginForm.reset();
+        gameState.userName = '';
+        gameState.userGrade = '';
+    });
+
+    // 排行榜筛选
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            
+            const filter = e.target.dataset.filter;
+            if (filter === 'grade') {
+                elements.gradeFilter.style.display = 'block';
+            } else {
+                elements.gradeFilter.style.display = 'none';
+                renderLeaderboard('all');
+            }
+        });
+    });
+
+    elements.filterGrade.addEventListener('change', () => {
+        renderLeaderboard('grade');
+    });
+
+    // 成绩数据库功能
+    const viewScoresBtn = document.getElementById('viewScoresBtn');
+    const scoresDatabasePage = document.getElementById('scoresDatabasePage');
+    const backToLoginBtn = document.getElementById('backToLoginBtn');
+    const scoresList = document.getElementById('scoresList');
+    const scoresFilterBtns = document.querySelectorAll('.scores-filter-btn');
+    const scoresGradeFilter = document.getElementById('scoresGradeFilter');
+    const scoresNameFilter = document.getElementById('scoresNameFilter');
+    const scoresFilterGrade = document.getElementById('scoresFilterGrade');
+    const scoresFilterName = document.getElementById('scoresFilterName');
+
+    // 查看成绩数据库
+    if (viewScoresBtn) {
+        viewScoresBtn.addEventListener('click', async () => {
+            elements.loginPage.style.display = 'none';
+            scoresDatabasePage.style.display = 'flex';
+            await loadLeaderboardFromServer();
+            renderScoresDatabase('all');
+        });
     }
-});
+
+    // 返回登录页面
+    if (backToLoginBtn) {
+        backToLoginBtn.addEventListener('click', () => {
+            scoresDatabasePage.style.display = 'none';
+            elements.loginPage.style.display = 'flex';
+        });
+    }
+
+    // 成绩数据库筛选
+    scoresFilterBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            scoresFilterBtns.forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            
+            const filter = e.target.dataset.filter;
+            scoresGradeFilter.style.display = 'none';
+            scoresNameFilter.style.display = 'none';
+            
+            if (filter === 'grade') {
+                scoresGradeFilter.style.display = 'block';
+            } else if (filter === 'name') {
+                scoresNameFilter.style.display = 'block';
+            } else {
+                renderScoresDatabase('all');
+            }
+        });
+    });
+
+    if (scoresFilterGrade) {
+        scoresFilterGrade.addEventListener('change', () => {
+            renderScoresDatabase('grade');
+        });
+    }
+
+    if (scoresFilterName) {
+        scoresFilterName.addEventListener('input', () => {
+            renderScoresDatabase('name');
+        });
+    }
+
+    // 攻击按钮
+    const attackBtn = document.getElementById('attackBtn');
+    if (attackBtn) {
+        attackBtn.addEventListener('click', () => {
+            gameState.attackCount++;
+            
+            const damage = gameState.currentDamage;
+            
+            gameState.bossHealth = Math.max(0, gameState.bossHealth - damage);
+            gameState.score += Math.round(damage);
+            
+            updateBossDisplay();
+            elements.score.textContent = '得分: ' + gameState.score;
+            document.getElementById('attackCount').textContent = `攻击次数: ${gameState.attackCount}/${gameState.maxAttacks}`;
+            
+            playDamageAnimation();
+            
+            document.getElementById('attackBtn').style.display = 'none';
+            document.getElementById('retryBtn').style.display = 'none';
+            document.getElementById('nextButtons').style.display = 'flex';
+            
+            if (gameState.bossHealth <= 0) {
+                setTimeout(() => endLevel(true), 500);
+            }
+            else if (gameState.attackCount >= gameState.maxAttacks) {
+                setTimeout(() => {
+                    alert(`攻击次数已达到上限(${gameState.maxAttacks}次)！本轮结束，强制退出。`);
+                    endLevel(false);
+                }, 500);
+            }
+        });
+    }
+
+    // 下一题按钮
+    const nextBtn = document.getElementById('nextBtn');
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            nextWord();
+        });
+    }
+
+    // 重新录制按钮
+    const retryBtn = document.getElementById('retryBtn');
+    if (retryBtn) {
+        retryBtn.addEventListener('click', () => {
+            elements.accuracyDisplay.style.display = 'none';
+            elements.recordBtn.disabled = false;
+            elements.recordBtn.style.opacity = '1';
+            elements.recordBtn.textContent = '🎤 开始录音';
+            elements.recordBtn.classList.remove('recording');
+            elements.recordingStatus.textContent = '';
+            gameState.isRecording = false;
+            gameState.audioChunks = [];
+            
+            if (gameState.mediaRecorder && gameState.mediaRecorder.state === 'recording') {
+                gameState.mediaRecorder.stop();
+            }
+            
+            if (gameState.audioStream) {
+                gameState.audioStream.getTracks().forEach(track => track.stop());
+            }
+            
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                setupRecording(stream);
+            }).catch(error => {
+                console.error('麦克风访问错误:', error);
+                alert('无法访问麦克风，请检查权限设置');
+            });
+        });
+    }
+
+    // 保存并退出登录
+    const saveLogoutBtn = document.getElementById('saveLogoutBtn');
+    if (saveLogoutBtn) {
+        saveLogoutBtn.addEventListener('click', async () => {
+            if (gameState.bossKills > 0 || gameState.score > 0) {
+                await saveToLeaderboard();
+                const timeTaken = gameState.timeTaken;
+                const minutes = Math.floor(timeTaken / 60);
+                const seconds = timeTaken % 60;
+                alert(`游戏已保存！\n已击杀BOSS: ${gameState.bossKills} 个\n总得分: ${gameState.score}\n用时: ${minutes}分${seconds}秒`);
+            }
+            
+            elements.gameContainer.style.display = 'none';
+            elements.loginPage.style.display = 'flex';
+            elements.loginForm.reset();
+            gameState.userName = '';
+            gameState.userGrade = '';
+        });
+    }
+}
+
+// 页面加载完成后初始化
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('🔧 DOMContentLoaded 事件触发，开始初始化...');
+        try {
+            initializeDOM();
+            console.log('✅ initializeDOM 执行成功');
+        } catch (error) {
+            console.error('❌ initializeDOM 执行失败:', error);
+            console.error('错误堆栈:', error.stack);
+        }
+    });
+} else {
+    console.log('🔧 DOM 已加载，直接初始化...');
+    try {
+        initializeDOM();
+        console.log('✅ initializeDOM 执行成功');
+    } catch (error) {
+        console.error('❌ initializeDOM 执行失败:', error);
+        console.error('错误堆栈:', error.stack);
+    }
+}
 
 // 开始游戏
 function startGame() {
@@ -649,100 +873,6 @@ function resetGame() {
     loadWord();
 }
 
-// 保存并退出登录
-document.getElementById('saveLogoutBtn').addEventListener('click', async () => {
-    // 保存当前游戏数据到排行榜
-    if (gameState.bossKills > 0 || gameState.score > 0) {
-        await saveToLeaderboard();
-        const timeTaken = gameState.timeTaken;
-        const minutes = Math.floor(timeTaken / 60);
-        const seconds = timeTaken % 60;
-        alert(`游戏已保存！\n已击杀BOSS: ${gameState.bossKills} 个\n总得分: ${gameState.score}\n用时: ${minutes}分${seconds}秒`);
-    }
-    
-    // 退出登录
-    elements.gameContainer.style.display = 'none';
-    elements.loginPage.style.display = 'flex';
-    elements.loginForm.reset();
-    gameState.userName = '';
-    gameState.userGrade = '';
-});
-
-// 攻击按钮
-document.getElementById('attackBtn').addEventListener('click', () => {
-    // 增加攻击次数
-    gameState.attackCount++;
-    
-    const damage = gameState.currentDamage;
-    
-    // 减少BOSS血量
-    gameState.bossHealth = Math.max(0, gameState.bossHealth - damage);
-    gameState.score += Math.round(damage);
-    
-    // 更新显示
-    updateBossDisplay();
-    elements.score.textContent = '得分: ' + gameState.score;
-    document.getElementById('attackCount').textContent = `攻击次数: ${gameState.attackCount}/${gameState.maxAttacks}`;
-    
-    // 播放伤害动画
-    playDamageAnimation();
-    
-    // 隐藏攻击和重新录制按钮，显示下一题按钮
-    document.getElementById('attackBtn').style.display = 'none';
-    document.getElementById('retryBtn').style.display = 'none';
-    document.getElementById('nextButtons').style.display = 'flex';
-    
-    // 检查BOSS是否被击败
-    if (gameState.bossHealth <= 0) {
-        setTimeout(() => endLevel(true), 500);
-    }
-    // 检查攻击次数是否达到上限
-    else if (gameState.attackCount >= gameState.maxAttacks) {
-        setTimeout(() => {
-            alert(`攻击次数已达到上限(${gameState.maxAttacks}次)！本轮结束，强制退出。`);
-            endLevel(false);
-        }, 500);
-    }
-});
-
-// 下一题按钮
-document.getElementById('nextBtn').addEventListener('click', () => {
-    nextWord();
-});
-
-// 重新录制按钮
-document.getElementById('retryBtn').addEventListener('click', () => {
-    elements.accuracyDisplay.style.display = 'none';
-    elements.recordBtn.disabled = false;
-    elements.recordBtn.style.opacity = '1';
-    elements.recordBtn.textContent = '🎤 开始录音';
-    elements.recordBtn.classList.remove('recording');
-    elements.recordingStatus.textContent = '';
-    gameState.isRecording = false;
-    gameState.audioChunks = [];
-    
-    // 停止旧的MediaRecorder
-    if (gameState.mediaRecorder && gameState.mediaRecorder.state === 'recording') {
-        gameState.mediaRecorder.stop();
-    }
-    
-    // 关闭旧的stream
-    if (gameState.audioStream) {
-        gameState.audioStream.getTracks().forEach(track => track.stop());
-    }
-    
-    // 重新初始化录音
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        setupRecording(stream);
-    }).catch(error => {
-        console.error('麦克风访问错误:', error);
-        alert('无法访问麦克风，请检查权限设置');
-    });
-});
-
-elements.nextLevelBtn.addEventListener('click', nextLevel);
-elements.restartBtn.addEventListener('click', resetGame);
-
 // 开始录音
 function startRecording() {
     gameState.isRecording = true;
@@ -760,19 +890,6 @@ function stopRecording() {
     elements.recordBtn.classList.remove('recording');
     elements.recordingStatus.textContent = '分析中...';
 }
-
-elements.playAudioBtn.addEventListener('click', playWordAudio);
-
-elements.recordBtn.addEventListener('click', () => {
-    if (!gameState.isRecording) {
-        startRecording();
-    } else {
-        stopRecording();
-    }
-});
-
-// 查看排行榜
-elements.leaderboardBtn.addEventListener('click', showLeaderboard);
 
 // 显示排行榜
 async function showLeaderboard() {
@@ -838,12 +955,6 @@ async function loadLeaderboardFromServer() {
     }
 }
 
-// 返回游戏
-elements.backBtn.addEventListener('click', () => {
-    elements.leaderboardPage.style.display = 'none';
-    elements.gameContainer.style.display = 'block';
-});
-
 // 格式化时间
 function formatTime(seconds) {
     // 确保 seconds 是有效的数字
@@ -889,67 +1000,17 @@ function renderLeaderboard(filter = 'all') {
     }).join('');
 }
 
-// 排行榜筛选
-document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        
-        const filter = e.target.dataset.filter;
-        if (filter === 'grade') {
-            elements.gradeFilter.style.display = 'block';
-        } else {
-            elements.gradeFilter.style.display = 'none';
-            renderLeaderboard('all');
-        }
-    });
-});
-
-elements.filterGrade.addEventListener('change', () => {
-    renderLeaderboard('grade');
-});
-
-// 退出登录
-elements.logoutBtn.addEventListener('click', () => {
-    elements.gameContainer.style.display = 'none';
-    elements.loginPage.style.display = 'flex';
-    elements.loginForm.reset();
-    gameState.userName = '';
-    gameState.userGrade = '';
-});
-
-// 成绩数据库功能
-const viewScoresBtn = document.getElementById('viewScoresBtn');
-const scoresDatabasePage = document.getElementById('scoresDatabasePage');
-const backToLoginBtn = document.getElementById('backToLoginBtn');
-const scoresList = document.getElementById('scoresList');
-const scoresFilterBtns = document.querySelectorAll('.scores-filter-btn');
-const scoresGradeFilter = document.getElementById('scoresGradeFilter');
-const scoresNameFilter = document.getElementById('scoresNameFilter');
-const scoresFilterGrade = document.getElementById('scoresFilterGrade');
-const scoresFilterName = document.getElementById('scoresFilterName');
-
-// 查看成绩数据库
-viewScoresBtn.addEventListener('click', async () => {
-    elements.loginPage.style.display = 'none';
-    scoresDatabasePage.style.display = 'flex';
-    await loadLeaderboardFromServer();
-    renderScoresDatabase('all');
-});
-
-// 返回登录页面
-backToLoginBtn.addEventListener('click', () => {
-    scoresDatabasePage.style.display = 'none';
-    elements.loginPage.style.display = 'flex';
-});
-
 // 渲染成绩数据库
 function renderScoresDatabase(filter = 'all') {
+    const scoresList = document.getElementById('scoresList');
+    const scoresFilterGrade = document.getElementById('scoresFilterGrade');
+    const scoresFilterName = document.getElementById('scoresFilterName');
+    
     let data = leaderboard;
     
-    if (filter === 'grade' && scoresFilterGrade.value) {
+    if (filter === 'grade' && scoresFilterGrade && scoresFilterGrade.value) {
         data = leaderboard.filter(item => item.grade === scoresFilterGrade.value);
-    } else if (filter === 'name' && scoresFilterName.value) {
+    } else if (filter === 'name' && scoresFilterName && scoresFilterName.value) {
         const searchName = scoresFilterName.value.toLowerCase();
         data = leaderboard.filter(item => item.name.toLowerCase().includes(searchName));
     }
@@ -981,31 +1042,3 @@ function renderScoresDatabase(filter = 'all') {
     `;
     }).join('');
 }
-
-// 成绩数据库筛选
-scoresFilterBtns.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        scoresFilterBtns.forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        
-        const filter = e.target.dataset.filter;
-        scoresGradeFilter.style.display = 'none';
-        scoresNameFilter.style.display = 'none';
-        
-        if (filter === 'grade') {
-            scoresGradeFilter.style.display = 'block';
-        } else if (filter === 'name') {
-            scoresNameFilter.style.display = 'block';
-        } else {
-            renderScoresDatabase('all');
-        }
-    });
-});
-
-scoresFilterGrade.addEventListener('change', () => {
-    renderScoresDatabase('grade');
-});
-
-scoresFilterName.addEventListener('input', () => {
-    renderScoresDatabase('name');
-});

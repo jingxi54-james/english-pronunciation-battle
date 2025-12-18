@@ -10,5 +10,16 @@
     "boss-battle"
   ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": "18.x"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
 }

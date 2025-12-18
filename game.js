@@ -622,10 +622,43 @@ function getAudioContext() {
     return audioContextInstance;
 }
 
+// 生成攻击音效的 Data URL
+function generateAttackSoundDataUrl() {
+    const audioContext = getAudioContext();
+    if (!audioContext) return null;
+    
+    try {
+        const sampleRate = audioContext.sampleRate;
+        const duration = 0.15;
+        const samples = sampleRate * duration;
+        const audioBuffer = audioContext.createAudioBuffer(1, samples, sampleRate);
+        const data = audioBuffer.getChannelData(0);
+        
+        // 生成简单的打击音效波形
+        for (let i = 0; i < samples; i++) {
+            const t = i / sampleRate;
+            const freq1 = 300 * Math.exp(-t * 10);
+            const freq2 = 600 * Math.exp(-t * 15);
+            const wave1 = Math.sin(2 * Math.PI * freq1 * t) * Math.exp(-t * 10);
+            const wave2 = Math.sin(2 * Math.PI * freq2 * t) * Math.exp(-t * 15);
+            data[i] = (wave1 * 0.5 + wave2 * 0.4) * 0.7;
+        }
+        
+        return audioBuffer;
+    } catch (e) {
+        console.warn('⚠️ 无法生成音效:', e);
+        return null;
+    }
+}
+
 function playAttackSound() {
     try {
         const audioContext = getAudioContext();
-        if (!audioContext) return;
+        if (!audioContext) {
+            console.warn('⚠️ AudioContext 不可用，尝试使用备用音效');
+            playAttackSoundFallback();
+            return;
+        }
         
         // 恢复 AudioContext 如果被暂停
         if (audioContext.state === 'suspended') {
@@ -672,6 +705,20 @@ function playAttackSound() {
         console.log('✅ 攻击音效已播放');
     } catch (e) {
         console.warn('⚠️ 音效播放失败:', e);
+        playAttackSoundFallback();
+    }
+}
+
+// 备用音效方案（使用振动或视觉反馈）
+function playAttackSoundFallback() {
+    try {
+        // 尝试使用振动 API
+        if (navigator.vibrate) {
+            navigator.vibrate([50, 30, 50]);
+            console.log('✅ 使用振动反馈');
+        }
+    } catch (e) {
+        console.warn('⚠️ 振动 API 不可用');
     }
 }
 
@@ -679,7 +726,11 @@ function playAttackSound() {
 function playVictorySound() {
     try {
         const audioContext = getAudioContext();
-        if (!audioContext) return;
+        if (!audioContext) {
+            console.warn('⚠️ AudioContext 不可用，尝试使用备用音效');
+            playVictorySoundFallback();
+            return;
+        }
         
         // 恢复 AudioContext 如果被暂停
         if (audioContext.state === 'suspended') {
@@ -721,7 +772,22 @@ function playVictorySound() {
         console.log('✅ 过关音效已播放');
     } catch (e) {
         console.warn('⚠️ 过关音效播放失败:', e);
+        playVictorySoundFallback();
     }
+}
+
+// 备用过关音效方案（使用振动）
+function playVictorySoundFallback() {
+    try {
+        // 尝试使用振动 API 产生胜利的振动模式
+        if (navigator.vibrate) {
+            navigator.vibrate([100, 50, 100, 50, 200]);
+            console.log('✅ 使用振动反馈（胜利）');
+        }
+    } catch (e) {
+        console.warn('⚠️ 振动 API 不可用');
+    }
+}
 }
 
 // 伤害动画

@@ -1,6 +1,12 @@
 [build]
   publish = "."
 
+# 不重定向验证文件
+[[redirects]]
+  from = "/MP_verify_*.txt"
+  to = "/wechat-official-account/MP_verify_*.txt"
+  status = 200
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

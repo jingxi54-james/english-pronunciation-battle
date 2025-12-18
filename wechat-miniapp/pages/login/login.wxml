@@ -1,0 +1,32 @@
+<view class="login-page">
+  <view class="login-container">
+    <view class="login-title">🎮 英语发音大作战</view>
+    
+    <view class="form-group">
+      <label class="form-label">姓名</label>
+      <input 
+        class="form-input" 
+        placeholder="请输入你的姓名"
+        value="{{userName}}"
+        bindinput="handleUserNameInput"
+      />
+    </view>
+
+    <view class="form-group">
+      <label class="form-label">年级</label>
+      <picker 
+        bindchange="handleGradeChange"
+        value="{{gradeIndex}}"
+        range="{{grades}}"
+        range-key="label"
+      >
+        <view class="form-select">
+          {{grades[gradeIndex].label}}
+        </view>
+      </picker>
+    </view>
+
+    <button class="btn-login" bindtap="handleLogin">开始游戏</button>
+    <button class="btn-view-scores" bindtap="viewScores">📈 查看成绩数据库</button>
+  </view>
+</view>
